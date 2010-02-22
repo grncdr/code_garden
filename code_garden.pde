@@ -164,15 +164,15 @@ static public class Garden {
     this_level.add(item);
 
     if(item instanceof Root){
-      increment(b_counts, level);
+      increment(b_counts, level, 1);
       counts = b_counts;
     } else {
-      increment(f_counts, level);
-      increment(l_counts, level);
+      increment(f_counts, level, 1);
+      increment(l_counts, level, ((Flower)item).lineCount());
     }
   }
 
-  static void increment(ArrayList counts, int level){
+  static void increment(ArrayList counts, int level, int amount){
     if(counts.size() < level+1){
       while(counts.size() < level){
         counts.add(0);
@@ -180,7 +180,7 @@ static public class Garden {
       counts.add(1);
     } else {
       int current = 0;
-      counts.set(level, 1 + (Integer)counts.get(level));
+      counts.set(level, amount + (Integer)counts.get(level));
     }
   }
   
@@ -188,7 +188,7 @@ static public class Garden {
     String rv = "";
     for(int j=drawables.size(); j>0; j--){
       ArrayList level = (ArrayList) drawables.get(j-1);
-      rv = rv + "Level "+(j-1)+": ";
+      rv = rv + "Level "+(j-1)+": "+ branchCount(j-1) + " branches and " + flowerCount(j-1)+" flowers containing " + lineCount(j-1) + " lines.\n";
       for(int i=0; i<level.size(); i++){
         Drawable item = (Drawable) level.get(i);
         if(item instanceof Flower){
@@ -249,11 +249,15 @@ static public class Garden {
     if(item instanceof Root){
       return splitRadius;
     } else {
-      //float avgLines = lineCount(level) / (float)flowerCount(level);
-      float proportion = ((Flower)item).lineCount() / (float)lineCount(level);
-      //return (int)(0.5 * proportion * flowerSpace(level));
-      return (int)((0.5 * flowerSpace(level)) / flowerCount(level));
-      //float thisRadius = sqrt(thisArea / PI);
+      float proportion = (float)((Flower)item).lineCount() / lineCount(level);
+      float avgLines = (float)lineCount(level)/flowerCount(level);
+      float avgRadius = (0.5 * flowerSpace(level))/flowerCount(level);
+      float avgArea = PI * pow(avgRadius, 2.);
+      float thisArea = avgArea * (((Flower)item).lineCount() / avgLines);
+      float thisRadius = sqrt(thisArea / PI);
+      return (int)thisRadius;
+      //return (int)sqrt(proportion * pow((Garden.width / 2.), 2.));
+      ///return (int)((proportion * 0.5 * flowerSpace(level)) / flowerCount(level));
       //float thisRadius = sqrt(pow(0.5 * flowerSpace(level),2.) * proportion);
       //return (int) avgRadius;
       //return (int)(avgRadius * proportion);
@@ -605,9 +609,9 @@ class Line extends LineBase implements Drawable, Petal, Hoverable {
 
   int radius(){
     if (_radius < 0){
-      Flower f = getFlower();
-      float proportion = children.size() / (float)f.lineCount();
-      _radius = (int)sqrt(proportion * pow(f.maxRadius(),2.));
+      Petal pp = (Petal) parent;
+      float proportion = lineCount() / (float)pp.lineCount();
+      _radius = (int)sqrt(proportion * pow(pp.radius(),2.));
     }
     return _radius;
   }
@@ -637,10 +641,8 @@ class Line extends LineBase implements Drawable, Petal, Hoverable {
   void draw() {
     Point pos = center();
     if( children.size() > 0 ){
-      int count = children.size();
-      for(int i=0; i<count; i++){
+      for(int i=0; i<children.size(); i++){
         Line line = (Line) children.get(i);
-        float angle = (2 * PI) / (i / count);
         line.draw();
       }
     }
@@ -676,7 +678,7 @@ class FileBlocker {
     try {
       scanner = new java.util.Scanner(file);
     } catch(FileNotFoundException e){
-      // FIXME - should probably do something like delete this
+      // FIXME - should probably do something like delete 'this'
     }
   }
 
@@ -695,7 +697,10 @@ class FileBlocker {
     Line lastLine = firstLine;
     while(scanner.hasNext()){
       Line line = new Line(scanner.nextLine(), pos);
-      if(line.indent > indent){
+      if(line.text.equals("")){
+        /* Do nothing, but skip indent checks */
+      }
+      else if(line.indent > indent){
         line = blockify(line, scanner, lastLine);
         if(line == null){
           return null;
