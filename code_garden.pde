@@ -629,7 +629,7 @@ class Line extends LineBase implements Drawable, Petal, Hoverable {
     if(_center.x < 0){
       Petal pp = (Petal) parent;
       Point p = pp.center();
-      float distance = pp.radius() + radius();
+      float distance = pp.radius() + 0.9 * (4./3.) * radius();
       int x = (int)(p.x + (sin(angle()) * distance));
       int y = (int)(p.y + (cos(angle()) * distance));
       _center.x = x;
@@ -649,7 +649,12 @@ class Line extends LineBase implements Drawable, Petal, Hoverable {
     flower_layer.stroke(200, 200, 0);  
     flower_layer.strokeWeight(1);
     flower_layer.fill(230, 230, 210);
-    flower_layer.ellipse(pos.x, pos.y, radius()*2, radius()*2);
+    flower_layer.pushMatrix();
+    flower_layer.translate(pos.x, pos.y);
+    flower_layer.rotate(-1*angle());
+    flower_layer.ellipse(0, 0, radius()*1.5, radius()*(8./3.));
+    flower_layer.line(0,radius()*(4./-3.), 0, radius()*.75);
+    flower_layer.popMatrix();
   }
 
   Hoverable intersecting(int x, int y){
