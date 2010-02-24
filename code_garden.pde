@@ -24,19 +24,23 @@ interface Lines {
 
 interface Petal extends Lines, Drawable {
   int radius();
+  int radius(float theta);
   Flower getFlower();
 }
 
 interface Hoverable {
   Hoverable intersecting(int x, int y);
   String hoverText();
+  String fullText();
 }
+
 
 Ground ground;
 PGraphics flower_layer;
 PFont font;
-String mouseOverText = "";
-String coordsText = "";
+String hoverText = "";
+String helpText = "Hover over flowers and stem splits to see \nthe files or directories they represent, \nclick them to see their contents";
+String contentText = new String(helpText);
 
 void setup ()
 {
@@ -45,11 +49,10 @@ void setup ()
   ground = new Ground();
   flower_layer = createGraphics(Garden.width, Garden.height, JAVA2D);
   size(Garden.width+400, Garden.height);
-  java.io.File fs_basedir = new java.io.File("/Users/Stephen/src/ccg-server/");
+  java.io.File fs_basedir = new java.io.File("/Users/Stephen/Source/ccg-server");
   stroke(125);
   fill(253, 162, 110);  
   createGarden(fs_basedir, ground);
-  coordsText = "Flower width " + Garden.flowerSpace(1) +", "+ Garden.flowerSpace(2);
   print(Garden.asString());
   frameRate(30);
 }
@@ -64,18 +67,25 @@ void draw() {
   image(flower_layer, 0, 0);
   line(880,0,880,height);
   fill(10, 30, 10);
-  text(mouseOverText, 890, 10);
-  text(coordsText, 400, 10);
+  text(contentText, Garden.width+10, 10);
+  text(hoverText, mouseX, mouseY-10);
 }
 
 void mouseMoved() {
-  Point p = new Point(mouseX, mouseY);
-  coordsText = p.toString() + p.distance(0, 0);
   Hoverable over = Garden.intersecting(mouseX, mouseY);
   if(over != null){
-    mouseOverText = over.hoverText();
+    hoverText = over.hoverText();
   } else {
-    mouseOverText = "";
+    hoverText = "";
+  }
+}
+
+void mouseClicked() {
+  Hoverable over = Garden.intersecting(mouseX, mouseY);
+  if(over != null){
+    contentText = over.fullText();
+  } else {
+    contentText = helpText;
   }
 }
 
@@ -125,9 +135,13 @@ class Point {
   }
 
   int distance(int ix, int iy){
-    int rise = y - iy;
-    int run = x - ix;
-    return (int)sqrt(rise*rise + run*run);
+    return (int) sqrt(pow(iy-y,2) + pow(ix-x,2));
+  }
+  
+  float angle(int ix, int iy){
+   int rise = iy - y;
+   int run = ix - x;
+   return atan2(rise, run);
   }
 }
 
@@ -135,8 +149,8 @@ static public class Garden {
   // Faux Singleton class that holds references to 
   // all branches and flowers indexed by level
 
-  static int width = 880;
-  static int height = 800;
+  static int width = 480;
+  static int height = 400;
   static int splitRadius = 8; // Radius of StemSplits 
   static private ArrayList drawables = new ArrayList();
   static private ArrayList b_counts = new ArrayList();
@@ -210,9 +224,17 @@ static public class Garden {
 
   public static Hoverable intersecting(int x, int y){
     Hoverable rv = null;
+    int distanceY = height;
+    int searchLevel = -1;
     for(int j=0; j < drawables.size(); j++){
-      ArrayList items = (ArrayList) drawables.get(j);
-      for(int i=0; i< items.size(); i++){
+      int currentYDistance = abs(y - getY(j));
+      if(currentYDistance < distanceY){
+          distanceY = currentYDistance;
+          searchLevel = j;
+      }
+    }
+    ArrayList items = (ArrayList) drawables.get(searchLevel);
+    for(int i=0; i< items.size(); i++){
         Drawable item = (Drawable) items.get(i);
         if(item instanceof Hoverable){
           Hoverable c = (Hoverable) item;
@@ -221,7 +243,6 @@ static public class Garden {
             return rv;
           }
         }
-      }
     }
     //int blah = (int)(height - (step_size * level) + (step_size/2));
     return rv;
@@ -256,12 +277,6 @@ static public class Garden {
       float thisArea = avgArea * (((Flower)item).lineCount() / avgLines);
       float thisRadius = sqrt(thisArea / PI);
       return (int)thisRadius;
-      //return (int)sqrt(proportion * pow((Garden.width / 2.), 2.));
-      ///return (int)((proportion * 0.5 * flowerSpace(level)) / flowerCount(level));
-      //float thisRadius = sqrt(pow(0.5 * flowerSpace(level),2.) * proportion);
-      //return (int) avgRadius;
-      //return (int)(avgRadius * proportion);
-      //return (int)(sqrt(proportion * pow(average,2.0)));
     }
   }
 
@@ -431,6 +446,10 @@ class StemSplit extends Root implements OnStem, Hoverable {
     return null;
   }
   
+  String fullText(){
+    return helpText;
+  }
+
   String hoverText(){
     return "Directory '"+this.dirname+"'";
   }
@@ -479,7 +498,7 @@ class Flower extends LineBase implements OnStem, Drawable, Petal, Hoverable {
   Point _truecenter = new Point(-1, -1);
   Root base = null;
   float vx, vy;
-
+  
   Root getRoot(){
     return base;
   }
@@ -499,7 +518,11 @@ class Flower extends LineBase implements OnStem, Drawable, Petal, Hoverable {
     chunker.blockify();
   }
 
-  String hoverText(){ 
+  String hoverText(){
+    return filename;
+  }
+
+  String fullText(){ 
     String rv = filename + "\n" + lineCount() + " lines\n";
     for(int i=0; i<children.size(); i++){
       Line child = (Line) children.get(i);
@@ -509,6 +532,10 @@ class Flower extends LineBase implements OnStem, Drawable, Petal, Hoverable {
       }
     }
     return rv;
+  }
+
+  int radius(float theta){
+      return radius();
   }
 
   int radius(){
@@ -544,7 +571,7 @@ class Flower extends LineBase implements OnStem, Drawable, Petal, Hoverable {
     flower_layer.ellipse(_center.x, _center.y, radius()*2, radius()*2);
     noFill();
     stroke(255,200,200);
-    ellipse(_center.x, _center.y, maxRadius()*2, maxRadius()*2);
+    //ellipse(_center.x, _center.y, maxRadius()*2, maxRadius()*2);
   }
 
   Hoverable intersecting(int x, int y){
@@ -579,12 +606,23 @@ class Line extends LineBase implements Drawable, Petal, Hoverable {
   }
 
   String hoverText(){
-    String rv = raw;
+    if(text.length() > 23){
+        return text.substring(0,20)+"...";
+    }
+    return text;
+  }
+
+  String fullText(String leading){
+    String rv = leading + text;
     for(int i=0; i<children.size(); i++){
       Line child = (Line) children.get(i);
-      rv = rv + "\n" + child.hoverText();
+      rv = rv + "\n" + child.fullText(leading + "  ");
     }
     return rv;
+  }
+
+  String fullText(){
+    return fullText("");
   }
   
   void countIndent(){
@@ -616,6 +654,14 @@ class Line extends LineBase implements Drawable, Petal, Hoverable {
     return _radius;
   }
 
+  int radius(float theta){
+    float e = 2.71828182818281828182;
+    float a = majorAxis() * 0.5;
+    float b = minorAxis() * 0.5;
+    float r = sqrt(pow(b*cos(theta),2.) + pow(a*sin(theta),2.));
+    return (int) r;  
+  }
+  
   float angle(){
     if(_angle < 0){
       ArrayList siblings = parent.getChildren();
@@ -625,11 +671,19 @@ class Line extends LineBase implements Drawable, Petal, Hoverable {
     return _angle;
   }
 
+  float minorAxis(){
+    return radius() * 1.5;
+  }
+  
+  float majorAxis(){
+    return radius() * (8./3.);
+  }
+  
   Point center(){
     if(_center.x < 0){
       Petal pp = (Petal) parent;
       Point p = pp.center();
-      float distance = pp.radius() + 0.9 * (4./3.) * radius();
+      float distance = pp.radius(angle()) + (majorAxis() / 2);
       int x = (int)(p.x + (sin(angle()) * distance));
       int y = (int)(p.y + (cos(angle()) * distance));
       _center.x = x;
@@ -639,26 +693,27 @@ class Line extends LineBase implements Drawable, Petal, Hoverable {
   }
 
   void draw() {
-    Point pos = center();
     if( children.size() > 0 ){
       for(int i=0; i<children.size(); i++){
         Line line = (Line) children.get(i);
         line.draw();
       }
     }
+    // Draw this petal 
+    Point pos = center();
+    flower_layer.pushMatrix();
     flower_layer.stroke(200, 200, 0);  
     flower_layer.strokeWeight(1);
     flower_layer.fill(230, 230, 210);
-    flower_layer.pushMatrix();
     flower_layer.translate(pos.x, pos.y);
     flower_layer.rotate(-1*angle());
-    flower_layer.ellipse(0, 0, radius()*1.5, radius()*(8./3.));
-    flower_layer.line(0,radius()*(4./-3.), 0, radius()*.75);
+    flower_layer.ellipse(0, 0, minorAxis(), majorAxis());
+    flower_layer.line(0,majorAxis()*-0.5, 0, majorAxis()*0.33);
     flower_layer.popMatrix();
   }
 
   Hoverable intersecting(int x, int y){
-    if(center().distance(x, y) < radius()){
+    if(center().distance(x, y) < radius(center().angle(x,y))){
       return this;
     }
     Hoverable rv = null;
