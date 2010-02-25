@@ -1,0 +1,94 @@
+<html>
+<head>
+<title>Code Garden</title>
+<script type="text/javascript"
+        src="trephine_create.js"></script>
+<script type="text/javascript"
+        src="http://www.google.com/jsapi"></script>
+<script type="text/javascript"
+        src="http://processingjs.org/content/download/processing-js-0.5/processing-0.5-packed.js"></script>
+<script type="text/javascript">
+	google.load('jquery', 1)
+</script>
+<script type="text/javascript">
+jQuery(function(){
+	load_sketch = function(name){
+		return $.ajax({url: name+'.pjs', async: false}).responseText;
+	}
+
+	Gardener = { 
+		'width': function() { return 500 }, 
+		'height': function() { return 600 },
+		'drawables': [],
+		'b_counts': [],
+		'f_counts': [],
+		'l_counts': [],
+		'splitRadius': function() { return 8 },
+		'addItem': function(item, level){
+			var drawables = this.drawables[level]
+			drawables.push(item)
+			if(item instanceof Flower){
+				drawab
+			}
+		},
+		'increment': function(arr, level, amount){
+			if(typeof amount == 'undefined'){
+				amount = 1;
+			}
+			while( arr.length <= level + 1){
+				arr.push(0)
+			}
+			arr[level] = arr[level] + amount
+		},
+		'intersecting': function(){
+			var x = p.mouseX
+			var y = p.mouseY
+			return null
+		},
+		'getX': function(item){
+			var xpos = 0;
+			var level = 0;
+			for(var level=0; level < this.drawables.length; level++){
+				var i = this.drawables[level].indexOf(item)
+				if( i < 0 ) { continue; }
+				xpos = getRadius(item)
+				for(var i=i-1; i>=0; i--){
+					xpos += getRadius(this.drawables[level][i]) * 2
+				}
+				break;
+			}
+		},
+		'getY': function(level){
+			if(level == 0){
+				return this.height()-1;
+			}
+			return this.height() - (this.height() / this.drawables.length) * level;
+		},
+		'getRadius': function(item, level){
+			if(item instanceof Root){
+				return this.splitRadius
+			} else {
+				var avgLines = this.lineCount(level)/ this.f_counts[level]
+				var avgRadius = (0.5 * this.flowerSpace(level))/this.f_counts[level]
+				var avgArea = PI * Math.pow(avgRadius, 2.)
+				var thisArea = avgArea * item.lineCount() / avgLines
+				var thisRadius = Math.sqrt(thisArea / PI)
+				return thisRadius;
+			}
+		},
+		'flowerSpace': function(level){
+			return this.width() - this.splitRadius * 2 * this.b_counts[level]
+		},
+	}
+	canvas = $('canvas#garden').get(0)
+	garden_sketch = load_sketch('code_garden')
+	test_sketch = load_sketch('test')
+	p = Processing(canvas, garden_sketch)
+})
+</script>
+</head>
+<body>
+<h2>Blah blah</h2>
+<canvas id="garden"></canvas>
+</body>
+</html>

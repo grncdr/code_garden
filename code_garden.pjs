@@ -1,0 +1,440 @@
+// Code flowers
+
+// Draws fractal-ish flowers to represent code blocks in flowers
+// draws direc tories as stem points for bunches of flowers
+
+/*
+interface Drawable {
+  void draw();
+  Point center();
+}
+
+interface OnStem extends Drawable {
+  Root getRoot();
+  void setRoot(Root dir);
+}
+
+interface Lines {
+  int lineCount();
+  void addLine(Line l);
+  ArrayList getChildren();
+}
+
+interface Petal extends Lines, Drawable {
+  int radius();
+  Flower getFlower();
+}
+
+interface Hoverable {
+  Hoverable intersecting(int x, int y);
+  String hoverText();
+}
+
+*/
+Ground ground;
+PGraphics flower_layer;
+
+var Point = Object.create(Object, {
+	'x': -1,
+	'y': -1,
+  'toString': function(){
+    return "("+x+", "+y+")";
+  },
+
+  'equals': function(p){
+    return p.x == x && p.y == y;
+  },
+
+  'distance': function(ix, iy){
+    int rise = y - iy;
+    int run = x - ix;
+    return (int)sqrt(rise*rise + run*run);
+  },
+}
+
+var Stem = Object.create(Object, { // implements Drawable
+  'root': null, //Point?
+  'destination': null, // OnStem
+  'end': null, //Point
+  'done': false,
+
+  'center': function(){
+    return end;
+  },
+
+  'update': function(){
+    dest = this.destination.center();
+    diff = this.end.x - this.dest.x;
+    if(abs(diff) < 5){
+      this.end.x = this.dest.x;
+    } else {
+      this.end.x = this.end.x - (diff / 4);
+    }
+    diff = this.end.y - dest.y;
+    if(abs(diff) < 5){
+      this.end.y = dest.y;
+    } else {
+      this.end.y = this.end.y - (diff / 4);
+    }
+    if(this.end.equals(dest)){
+      done = true;
+    }
+  },
+
+  'draw': function(){
+    /* Lengthen curve */
+    if(!done){
+      this.update();
+    }
+    start = this.root.center();
+    ydiff = start.y-end.y;
+    noFill();
+    strokeWeight(2);
+    stroke(10, 100, 10);
+    bezier( start.x, start.y, 
+            start.x, start.y-ydiff*0.4, 
+            end.x,   end.y+ydiff*0.7, 
+            end.x,   end.y);
+    if(done){
+      destination.draw();
+    }
+  },
+}
+
+var Root = Object.create(Object, { // implements Drawable
+  'stems': [],
+  '_center': null, // Point
+  'level': 0,
+
+  'addItem': function(OnStem s){
+    s.setRoot(this);
+    Gardener.addItem(s, level+1);
+    stems.add( new Stem(this, s) );
+  },
+
+  'center': function(){
+    if(_center.x < 0){
+      _center.x = Gardener.getX(this);
+    }
+    if(_center.y < 0){
+      _center.y = Gardener.getY(this.level);
+    }
+    return _center;
+  },
+
+  'draw': function(){
+    // draw each item
+    for(int i=0; i<stems.length; i++){
+      Stem stem = (Stem) stems.get(i);
+      stem.draw();
+    }
+  },
+}
+
+var Ground = Object.create(Root, {
+  'roots': [],
+
+  'addItem': function(OnStem s){
+    Root root = new Root();
+    Gardener.addItem(root, 0);
+    root.addItem(s);
+    roots.add(root);
+  },
+
+  'draw': function(){
+    for(int i=0; i<roots.length; i++){
+      Root root = (Root) roots.get(i);
+      root.draw();
+    }
+  }
+}
+
+var StemSplit = Object.create(Root, { // implements OnStem, Hoverable 
+  'base': null,
+  'dirname': "",
+  'setRoot': function(Root p){
+    this.base = p;
+    this.level = base.level + 1;
+  },
+
+  'getRoot': function(){
+    return this.base;
+  },
+
+  'intersecting': function(int x, int y){
+    if(this.center().distance(x, y) < Gardener.splitRadius){
+      return this;
+    }
+    return null;
+  },
+  
+  'hoverText': function(){
+    return "Directory '"+this.dirname+"'";
+  },
+
+  'draw': function(){
+    super.draw();
+    fill(10, 100, 10);
+    noStroke();
+    ellipse(_center.x, _center.y, Gardener.splitRadius*2, Garden.splitRadius*2);
+  },
+}
+
+
+var LineBase = Object.create(Object, { //implements Lines 
+
+  'children': [],
+  '_center': null, // Point
+  '_radius': -1,
+  '_maxRadius': -1,
+
+  'getChildren': function(){
+    return this.children;
+  },
+
+  'lineCount': function(){
+    int count = this.children.length;
+    for(int i=0; i<children.length; i++){
+      Line current = (Line) children.get(i);
+      count += current.lineCount();
+    }
+    return count;
+  },
+
+  'addLine': function(Line line){
+    line.parent = this;
+    this.children.add(line);
+  },
+
+}
+
+var Flower = Object.create(LineBase, { // implements OnStem, Drawable, Petal, Hoverable
+  'filename': null,
+  'level,
+  'line_count': 0,
+  'base': null,
+
+  'getRoot(){
+    return base;
+  },
+
+  'setRoot(Root p){
+    base = p;
+    level = base.level+1;
+  },
+
+  'getFlower(){
+    return this;
+  },
+
+  'hoverText(){ 
+    String rv = filename + "\n" + lineCount() + " lines\n";
+    for(int i=0; i<children.length; i++){
+      Line child = (Line) children.get(i);
+      rv = rv + "\n" + child.text;
+      if(child.children.length > 0){
+        rv = rv + "...\n    "+child.children.length+" lines";
+      }
+    }
+    return rv;
+  }
+
+  'radius': function(){
+    if(_radius < 0){
+      _radius = (int) sqrt(pow(maxRadius(),2.) * (children.length/(float)lineCount()));
+    }
+    return _radius;
+  }
+
+  'maxRadius': function(){
+    if(_maxRadius < 0){
+      _maxRadius= Gardener.getRadius(this, level);
+    }
+    return _maxRadius;
+  }
+
+  'center': function(){
+    if(_center.x == -1 && _center.y == -1){
+      _center.x = Gardener.getX(this);
+      _center.y = Gardener.getY(this.level);
+    }
+    return _center;
+  }
+
+  'draw': function() {
+    for(int i=0; i<children.length; i++){
+      Line line = (Line) children.get(i);
+      line.draw();
+    }
+    flower_layer.strokeWeight(2);
+    flower_layer.fill(220, 220, 0);
+    flower_layer.stroke(180, 180, 0);
+    flower_layer.ellipse(_center.x, _center.y, radius()*2, radius()*2);
+    noFill();
+    stroke(255,200,200);
+    ellipse(_center.x, _center.y, maxRadius()*2, maxRadius()*2);
+  }
+
+  'intersecting': function(int x, int y){
+    if(this.center().distance(x, y) < this.radius()){
+      return this;
+    }
+    Hoverable rv = null;
+    for(int i=0; i<children.length; i++){
+      Hoverable container = (Hoverable) children.get(i);
+      rv = container.intersecting(x, y);
+      if(rv != null){
+        return rv;
+      }
+    }
+    return rv;
+  }
+}
+
+class Line extends LineBase implements Drawable, Petal, Hoverable {
+  int pos;
+  int indent;
+  float _angle = -1;
+  String text;
+  String raw;
+  Lines parent = null;
+
+  Line(String r, int at){
+    raw = r;
+    pos = at;
+    text = raw.trim();
+    this.countIndent();
+  }
+
+  String hoverText(){
+    String rv = raw;
+    for(int i=0; i<children.length; i++){
+      Line child = (Line) children.get(i);
+      rv = rv + "\n" + child.hoverText();
+    }
+    return rv;
+  }
+  
+  void countIndent(){
+    int c = 0;
+    while(c < raw.length() && raw.charAt(c) == ' '){
+      c++;
+    }
+    this.indent = c-1;
+  }
+
+  boolean isComment(){
+    if(text.length() == 0){
+      return true;
+    }
+    return text.charAt(0) == '#';
+  }
+
+  Flower getFlower(){
+    Petal p = (Petal) parent;
+    return p.getFlower();
+  }
+
+  int radius(){
+    if (_radius < 0){
+      Petal pp = (Petal) parent;
+      float proportion = lineCount() / (float)pp.lineCount();
+      _radius = (int)sqrt(proportion * pow(pp.radius(),2.));
+    }
+    return _radius;
+  }
+
+  float angle(){
+    if(_angle < 0){
+      ArrayList siblings = parent.getChildren();
+      int index = siblings.indexOf(this);
+      _angle = 2 * PI * (index / (float)siblings.length);
+    }
+    return _angle;
+  }
+
+  Point center(){
+    if(_center.x < 0){
+      Petal pp = (Petal) parent;
+      Point p = pp.center();
+      float distance = pp.radius() + 0.9 * (4./3.) * radius();
+      int x = (int)(p.x + (sin(angle()) * distance));
+      int y = (int)(p.y + (cos(angle()) * distance));
+      _center.x = x;
+      _center.y = y;
+    }
+    return _center;
+  }
+
+  void draw() {
+    Point pos = center();
+    if( children.length > 0 ){
+      for(int i=0; i<children.length; i++){
+        Line line = (Line) children.get(i);
+        line.draw();
+      }
+    }
+    flower_layer.stroke(200, 200, 0);  
+    flower_layer.strokeWeight(1);
+    flower_layer.fill(230, 230, 210);
+    flower_layer.pushMatrix();
+    flower_layer.translate(pos.x, pos.y);
+    flower_layer.rotate(-1*angle());
+    flower_layer.ellipse(0, 0, radius()*1.5, radius()*(8./3.));
+    flower_layer.line(0,radius()*(4./-3.), 0, radius()*.75);
+    flower_layer.popMatrix();
+  }
+
+  Hoverable intersecting(int x, int y){
+    if(center().distance(x, y) < radius()){
+      return this;
+    }
+    Hoverable rv = null;
+    for(int i=0; i<children.length; i++){
+      Hoverable container = (Hoverable) children.get(i);
+      rv = container.intersecting(x, y);
+      if(rv != null){
+        return rv;
+      }
+    }
+    return rv;
+  }
+}
+
+/// "Global" functions for setup/draw/interaction
+void setup ()
+{
+  ground = new Ground();
+  flower_layer = createGraphics(Gardener.width(), Gardener.height(), JAVA2D);
+  size(Gardener.width(), Gardener.height());
+  //java.io.File fs_basedir = new java.io.File("/Users/Stephen/src/ccg-server/");
+  stroke(125);
+  fill(253, 162, 110);  
+  //createGardener(fs_basedir, ground);
+  coordsText = "Flower width " + Gardener.flowerSpace(1) +", "+ Garden.flowerSpace(2);
+  //print(Gardener.asString());
+  frameRate(30);
+}
+
+void draw() {
+  background(200, 200, 255);
+  smooth();
+  flower_layer.beginDraw();
+  flower_layer.smooth();
+  ground.draw();
+  flower_layer.endDraw();
+  image(flower_layer, 0, 0);
+  line(880,0,880,height);
+  fill(10, 30, 10);
+}
+
+void mouseMoved() {
+  Point p = new Point(mouseX, mouseY);
+  coordsText = p.toString() + p.distance(0, 0);
+  Hoverable over = Gardener.intersecting(mouseX, mouseY);
+  if(over != null){
+    mouseOverText = over.hoverText();
+  } else {
+    mouseOverText = "";
+  }
+}
