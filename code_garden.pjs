@@ -214,20 +214,23 @@ var Flower = Object.create(LineBase, { // implements OnStem, Drawable, Petal, Ho
   'line_count': 0,
   'base': null,
 
-  'getRoot(){
+	// Deprecated
+  'getRoot': function(){
     return base;
   },
 
-  'setRoot(Root p){
+	// Deprecated
+  'setRoot': function(Root p){
     base = p;
     level = base.level+1;
   },
 
-  'getFlower(){
+	// Deprecated
+  'getFlower': function(){
     return this;
   },
 
-  'hoverText(){ 
+  'hoverText': function(){ 
     String rv = filename + "\n" + lineCount() + " lines\n";
     for(int i=0; i<children.length; i++){
       Line child = (Line) children.get(i);
@@ -263,7 +266,7 @@ var Flower = Object.create(LineBase, { // implements OnStem, Drawable, Petal, Ho
 
   'draw': function() {
     for(int i=0; i<children.length; i++){
-      Line line = (Line) children.get(i);
+      line = (Line) children.get(i);
       line.draw();
     }
     flower_layer.strokeWeight(2);
@@ -279,43 +282,41 @@ var Flower = Object.create(LineBase, { // implements OnStem, Drawable, Petal, Ho
     if(this.center().distance(x, y) < this.radius()){
       return this;
     }
-    Hoverable rv = null;
     for(int i=0; i<children.length; i++){
-      Hoverable container = (Hoverable) children.get(i);
-      rv = container.intersecting(x, y);
+      rv = children[i].intersecting(x, y);
       if(rv != null){
         return rv;
       }
     }
-    return rv;
+    return null;
   }
 }
 
-class Line extends LineBase implements Drawable, Petal, Hoverable {
-  int pos;
-  int indent;
-  float _angle = -1;
-  String text;
-  String raw;
-  Lines parent = null;
-
+var Line = Object.create(LineBase, { // implements Drawable, Petal, Hoverable
+	'pos': 0,
+	'indent': 0,
+  '_angle': -1;
+  'text': '',
+  'raw': '',
+  'owner': null,
+	'flower': null,
+	/* deprecated constructor 
   Line(String r, int at){
     raw = r;
     pos = at;
     text = raw.trim();
     this.countIndent();
-  }
-
-  String hoverText(){
-    String rv = raw;
-    for(int i=0; i<children.length; i++){
+  }*/
+  'hoverText': function(){
+    rv = this.raw;
+    for(i=0; i<children.length; i++){
       Line child = (Line) children.get(i);
       rv = rv + "\n" + child.hoverText();
     }
     return rv;
-  }
+  },
   
-  void countIndent(){
+  'countIndent': function(){
     int c = 0;
     while(c < raw.length() && raw.charAt(c) == ' '){
       c++;
@@ -323,37 +324,37 @@ class Line extends LineBase implements Drawable, Petal, Hoverable {
     this.indent = c-1;
   }
 
-  boolean isComment(){
+  'isComment': function(){
     if(text.length() == 0){
       return true;
     }
     return text.charAt(0) == '#';
   }
 
-  Flower getFlower(){
+  'getFlower': function(){
     Petal p = (Petal) parent;
     return p.getFlower();
   }
 
-  int radius(){
+  'radius': function(){
     if (_radius < 0){
       Petal pp = (Petal) parent;
       float proportion = lineCount() / (float)pp.lineCount();
       _radius = (int)sqrt(proportion * pow(pp.radius(),2.));
     }
     return _radius;
-  }
+  },
 
-  float angle(){
+  'angle': function(){
     if(_angle < 0){
       ArrayList siblings = parent.getChildren();
       int index = siblings.indexOf(this);
       _angle = 2 * PI * (index / (float)siblings.length);
     }
     return _angle;
-  }
+  },
 
-  Point center(){
+  'center': function(){
     if(_center.x < 0){
       Petal pp = (Petal) parent;
       Point p = pp.center();
@@ -364,9 +365,9 @@ class Line extends LineBase implements Drawable, Petal, Hoverable {
       _center.y = y;
     }
     return _center;
-  }
+  },
 
-  void draw() {
+  'draw': function() {
     Point pos = center();
     if( children.length > 0 ){
       for(int i=0; i<children.length; i++){
@@ -383,9 +384,9 @@ class Line extends LineBase implements Drawable, Petal, Hoverable {
     flower_layer.ellipse(0, 0, radius()*1.5, radius()*(8./3.));
     flower_layer.line(0,radius()*(4./-3.), 0, radius()*.75);
     flower_layer.popMatrix();
-  }
+  },
 
-  Hoverable intersecting(int x, int y){
+  'intersecting': function(int x, int y){
     if(center().distance(x, y) < radius()){
       return this;
     }
