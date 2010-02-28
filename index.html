@@ -2,25 +2,23 @@
 <head>
 <title>Code Garden</title>
 <script type="text/javascript"
-        src="trephine_create.js"></script>
-<script type="text/javascript"
-        src="js_objects.js"></script>
-<script type="text/javascript"
         src="http://www.google.com/jsapi"></script>
 <script type="text/javascript"
         src="http://processingjs.org/content/download/processing-js-0.5/processing-0.5-packed.js"></script>
 <script type="text/javascript">
 	google.load('jquery', 1)
 </script>
+<script type="text/javascript"
+        src="trephine_create.js"></script>
+<script type="text/javascript"
+        src="js_objects.js"></script>
 <script type="text/javascript">
 jQuery(function(){
-	load_sketch = function(name){
-		return $.ajax({url: name+'.pjs', async: false}).responseText;
-	}
-	canvas = $('canvas#garden').get(0)
-	garden_sketch = load_sketch('code_garden')
-	test_sketch = load_sketch('test')
-	p = Processing(canvas, garden_sketch)
+	var canvas = $('canvas')[0]
+	var sketch = 'code_garden'
+	jQuery.get(sketch+'.pjs',  function(text){
+		p = Processing(canvas, text)
+	})
 })
 
 </script>
