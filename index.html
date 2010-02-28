@@ -12,19 +12,8 @@
         src="trephine_create.js"></script>
 <script type="text/javascript"
         src="js_objects.js"></script>
-<script type="text/javascript">
-jQuery(function(){
-	var canvas = $('canvas')[0]
-	var sketch = 'code_garden'
-	jQuery.get(sketch+'.pjs',  function(text){
-		p = Processing(canvas, text)
-	})
-})
-
-</script>
 </head>
 <body>
-<h2>Blah blah</h2>
 <canvas id="garden"></canvas>
 </body>
 </html>
