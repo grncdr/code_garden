@@ -119,7 +119,7 @@ Garden = {
 			var avgArea = Math.PI * Math.pow(avgRadius, 2.)
 			var thisArea = avgArea * item.size / avgSize
 			var thisRadius = avgRadius * item.size / avgSize
-			return thisRadius
+			return Math.min(thisRadius, Math.min(Garden.width(), Garden.height()) / 5)
 		}
 	},
 
@@ -400,7 +400,7 @@ Object.defineProperties(Garden.Flower.prototype, {
 	},
 
 	maxRadius: { get: function(){
-			this._maxRadius = Math.min(Garden.getRadius(this), Math.min(Garden.width(), Garden.height()) / 4)
+			this._maxRadius = Garden.getRadius(this)
 		return this._maxRadius
 		},
 	},
