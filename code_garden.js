@@ -76,9 +76,10 @@ Garden = {
 			amount = 1
 		}
 		if(arr[level] == undefined){
-			arr[level] = 0
+			arr[level] = amount
+		} else {
+			arr[level] = arr[level] + amount
 		}
-		arr[level] = arr[level] + amount
 	},
 
 	intersecting: function(){
@@ -93,10 +94,10 @@ Garden = {
 			var xstep = this.width() / this.drawables[0].length
 			return xstep * 0.5 + xstep * (this.drawables[0].indexOf(item) / this.drawables[0].length)
 		}
-		var xpos = this.getRadius(item)
+		var xpos = this.width() - this.getRadius(item)
 		var index = this.drawables[item.level].indexOf(item)
 		for(var i=index-1; i>=0; i--){
-			xpos += this.getRadius(this.drawables[item.level][i]) * 2
+			xpos -= this.getRadius(this.drawables[item.level][i]) * 2
 		}
 		return xpos
 	},
@@ -165,10 +166,6 @@ Garden.Stem = function(root, destination){
 }
 
 Garden.Stem.prototype = {
-	center: function(){
-		return this.end
-	},
-
 	update: function(){
 		var dest = this.destination.center
 		var diff = this.end.x - dest.x
@@ -219,14 +216,9 @@ Garden.Root = Object.create(new Object(), {
 
 	center: { 
 		get: function(){
-			if(this._center == undefined){
 				this._center = new Garden.Point(Garden.getX(this), Garden.getY(this))
-			}
 			return this._center
 		},
-		set: function(point){
-			this._center = point
-		}
 	},
 
 	addOrGetDir: { value: function(dirname, create){
@@ -381,9 +373,7 @@ Object.defineProperties(Garden.Flower.prototype, Garden.LineBase)
 Object.defineProperties(Garden.Flower.prototype, {
 	center: { 
 		get: function(){
-			if(this._center == undefined){
 				this._center = new Garden.Point(Garden.getX(this), Garden.getY(this))
-			}
 			return this._center
 		},
 	},
@@ -403,18 +393,14 @@ Object.defineProperties(Garden.Flower.prototype, {
 
 	radius: { 
 		get: function(){
-			if(this._radius == undefined){
 				//this._radius = sqrt(pow(this.maxRadius,2.) * (children.length/this.lineCount))
 				this._radius = this.maxRadius
-			}
 			return this._radius
 		}
 	},
 
 	maxRadius: { get: function(){
-		if(this._maxRadius == undefined){
 			this._maxRadius = Math.min(Garden.getRadius(this), Math.min(Garden.width(), Garden.height()) / 4)
-		}
 		return this._maxRadius
 		},
 	},
